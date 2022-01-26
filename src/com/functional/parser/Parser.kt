@@ -99,15 +99,16 @@ fun <A,B> Parser<A>.map(f: (A) -> B) : Parser<B> {
 
 val charParser = Parser { parseString ->
     if (parseString.string.isEmpty()) { return@Parser null }
+    val match = parseString.string.first()
     parseString.drop(1)
-    return@Parser parseString
+    return@Parser match
 }
 
 /*
 * North South Parser using Map
 * */
 val northSouthParser = charParser.map {
-    if (it.string == "N")
+    if (it == 'N')
         1.0
     else
         -1.0
@@ -117,7 +118,7 @@ val northSouthParser = charParser.map {
 * East West Parser using Map
 * */
 val eastWestParser = charParser.map {
-    if (it.string == "E")
+    if (it == 'E')
         1.0
     else
         -1.0
