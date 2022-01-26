@@ -165,4 +165,13 @@ fun main() {
     /* Invalid coordinate value, still returns the result */
     println(parseLatLong("40.6782° A, 73.9442° W"))
 
+    val evenParser = intParser.map { it % 2 == 0 }
+    val oddParser = intParser.map { it % 2 == 1 }
+
+    println("Even Parser : ${evenParser.run(ParseString("100"))}")
+    println("Even Parser : ${evenParser.run(ParseString("101"))}")
+
+    println("Odd Parser : ${oddParser.run(ParseString("100"))}")
+    println("Odd Parser : ${oddParser.run(ParseString("101"))}")
+
 }
