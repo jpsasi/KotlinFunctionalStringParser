@@ -86,6 +86,35 @@ fun <A> neverParser(): Parser<A> {
     }
 }
 
+val charParser = Parser { parseString ->
+    if (parseString.string.isEmpty()) { return@Parser null }
+    val match = parseString.string.first()
+    parseString.drop(1)
+    return@Parser match
+}
+
+/*
+* North South Parser using Map
+* */
+val northSouthParser = charParser.flatMap {
+    when (it) {
+        'N' -> alwaysParser(1.0)
+        'S' -> alwaysParser(-1.0)
+        else -> neverParser()
+    }
+}
+
+/*
+* East West Parser using Map
+* */
+val eastWestParser = charParser.flatMap {
+    when (it) {
+        'E' -> alwaysParser(1.0)
+        'W' -> alwaysParser(-1.0)
+        else -> neverParser()
+    }
+}
+
 fun <A,B> Parser<A>.map(f: (A) -> B) : Parser<B> {
     return Parser { parseString ->
         val a = run(parseString)
@@ -116,33 +145,66 @@ fun <A,B> Parser<A>.flatMap(f: (A) -> Parser<B>) : Parser<B> {
     }
 }
 
-val charParser = Parser { parseString ->
-    if (parseString.string.isEmpty()) { return@Parser null }
-    val match = parseString.string.first()
-    parseString.drop(1)
-    return@Parser match
-}
-
-/*
-* North South Parser using Map
-* */
-val northSouthParser = charParser.flatMap {
-    when (it) {
-        'N' -> alwaysParser(1.0)
-        'S' -> alwaysParser(-1.0)
-        else -> neverParser()
+fun <A,B> zip(a: Parser<A>, b: Parser<B>) : Parser<Pair<A,B>> {
+    return Parser { parseString ->
+        val originalString = parseString
+        a.run(parseString)?.let { matchA ->
+            b.run(parseString)?.let { matchB ->
+                return@Parser Pair(matchA, matchB)
+            } ?: run {
+                parseString.string = originalString.string
+                return@Parser null
+            }
+        }
     }
 }
 
-/*
-* East West Parser using Map
-* */
-val eastWestParser = charParser.flatMap {
-    when (it) {
-        'E' -> alwaysParser(1.0)
-        'W' -> alwaysParser(-1.0)
-        else -> neverParser()
-    }
+fun <A, B, C> zip(
+    a: Parser<A>,
+    b: Parser<B>,
+    c: Parser<C>
+): Parser<Pair<A, Pair<B, C>>> {
+    return zip(a, zip(b, c))
+}
+
+fun <A, B, C, D> zip(
+    a: Parser<A>,
+    b: Parser<B>,
+    c: Parser<C>,
+    d: Parser<D>
+): Parser<Pair<A, Pair<B, Pair<C, D>>>> {
+    return zip(a, zip(b, zip(c, d)))
+}
+
+fun <A,B,C,D, E> zip(a: Parser<A>,
+                     b: Parser<B>,
+                     c: Parser<C>,
+                     d: Parser<D>,
+                     e: Parser<E>): Parser<Pair<A,Pair<B,Pair<C,Pair<D, E>>>>> {
+    return zip(a, zip(b, zip(c, zip(d, e))))
+}
+
+fun <A, B, C, D, E, F> zip(
+    a: Parser<A>,
+    b: Parser<B>,
+    c: Parser<C>,
+    d: Parser<D>,
+    e: Parser<E>,
+    f: Parser<F>
+): Parser<Pair<A, Pair<B, Pair<C, Pair<D, Pair<E, F>>>>>> {
+    return zip(a, zip(b, zip(c, zip(d, zip(e, f)))))
+}
+
+fun <A, B, C, D, E, F, G> zip(
+    a: Parser<A>,
+    b: Parser<B>,
+    c: Parser<C>,
+    d: Parser<D>,
+    e: Parser<E>,
+    f: Parser<F>,
+    g: Parser<G>
+): Parser<Pair<A, Pair<B, Pair<C, Pair<D, Pair<E, Pair<F, G>>>>>>> {
+    return zip(a, zip(b, zip(c, zip(d, zip(e, zip(f, g))))))
 }
 
 /*
@@ -150,28 +212,22 @@ val eastWestParser = charParser.flatMap {
 * */
 fun parseLatLong(string: String): Coordinate? {
     val parseString = ParseString(string)
-    val coordinateParser = doubleParser.flatMap { latitude ->
-        literalParser("° ").flatMap {
-            northSouthParser.flatMap { latSign ->
-                literalParser(", ").flatMap {
-                    doubleParser.flatMap { longitude ->
-                        literalParser("° ").flatMap {
-                            eastWestParser.map { longSign ->
-                                Coordinate(latitude = latitude * latSign, longitude = longitude * longSign)
-                            }
-                        }
-                    }
-                }
-            }
-        }
+    val zipCoordinateParser = zip(doubleParser,
+        literalParser("° "),
+        northSouthParser,
+        literalParser(", "),
+        doubleParser,
+        literalParser("° "),
+        eastWestParser
+    ).map { pair ->
+        Coordinate( latitude = pair.first * pair.second.second.first,
+        longitude = pair.second.second.second.second.first * pair.second.second.second.second.second.second)
     }
-    return coordinateParser.run(parseString)
+    return zipCoordinateParser.run(parseString)
 }
 
 fun main() {
     println(parseLatLong("40.6782° N, 73.9442° W"))
-    /* Invalid coordinate value returns nil */
     println(parseLatLong("40.6782° S, 73.9442° W"))
     println(parseLatLong("abc.6782° S, 73.9442° W"))
-
 }
