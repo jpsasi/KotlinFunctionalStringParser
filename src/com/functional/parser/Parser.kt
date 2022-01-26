@@ -86,42 +86,41 @@ fun <A> neverParser(): Parser<A> {
     }
 }
 
-/*
-* North South Parser
-* */
-val northSouthParser = Parser { parseString ->
-    when (parseString.string.first()) {
-        'N' -> {
-            parseString.drop(1)
-            return@Parser 1.0
-        }
-        'S' -> {
-            parseString.drop(1)
-            return@Parser -1.0
-        }
-        else -> {
+fun <A,B> Parser<A>.map(f: (A) -> B) : Parser<B> {
+    return Parser { parseString ->
+        val a = run(parseString)
+        if (a == null) {
             return@Parser null
+        } else {
+            return@Parser f(a)
         }
     }
 }
 
+val charParser = Parser { parseString ->
+    if (parseString.string.isEmpty()) { return@Parser null }
+    parseString.drop(1)
+    return@Parser parseString
+}
+
 /*
-* East West Parser
+* North South Parser using Map
 * */
-val eastWestParser = Parser { parseString ->
-    when (parseString.string.first()) {
-        'E' -> {
-            parseString.drop(1)
-            return@Parser 1.0
-        }
-        'W' -> {
-            parseString.drop(1)
-            return@Parser -1.0
-        }
-        else -> {
-            return@Parser null
-        }
-    }
+val northSouthParser = charParser.map {
+    if (it.string == "N")
+        1.0
+    else
+        -1.0
+}
+
+/*
+* East West Parser using Map
+* */
+val eastWestParser = charParser.map {
+    if (it.string == "E")
+        1.0
+    else
+        -1.0
 }
 
 /*
@@ -163,5 +162,7 @@ fun main() {
     println(doubleParser.runParser(str))
     println(literalParser(".1").run(str))
     println(parseLatLong("40.6782° N, 73.9442° W"))
+    /* Invalid coordinate value, still returns the result */
+    println(parseLatLong("40.6782° A, 73.9442° W"))
 
 }
